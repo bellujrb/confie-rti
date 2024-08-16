@@ -1,9 +1,20 @@
 import streamlit as st
+import pandas as pd
 from datetime import datetime
+
+
+# Função para inicializar o banco de dados no cache
+@st.cache_data
+def init_db():
+    return pd.DataFrame(columns=["Número do Projeto", "Logo", "Nome", "CNPJ", "Endereço", "Cidade/Estado", "Número ART",
+                                 "E-mail do Cliente", "Data"])
 
 
 def run():
     st.title('Registro de Projeto')
+
+    # Inicializa o banco de dados
+    db = init_db()
 
     with st.form(key='project_form'):
         # Upload de imagem para o logotipo
@@ -25,5 +36,17 @@ def run():
         submit_button = st.form_submit_button("Registrar Projeto")
 
         if submit_button:
+            # Adiciona os dados ao DataFrame
+            new_entry = pd.DataFrame([[numero_conf, logo, nome, cnpj, endereco, city, numero_art, email_cliente, data]],
+                                     columns=db.columns)
+            db = pd.concat([db, new_entry], ignore_index=True)
+
             st.success("Projeto registrado com sucesso!")
-            # Aqui você pode adicionar código para salvar os dados ou realizar outras ações
+
+            # Exibe a tabela atualizada
+            st.dataframe(db)
+
+            # Atualiza o banco de dados no cache
+            st.cache_data.clear()
+            st.cache_data(init_db)
+
