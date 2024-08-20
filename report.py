@@ -2,7 +2,6 @@ import streamlit as st
 from fpdf import FPDF
 from io import BytesIO
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 def generate_pdf(content):
