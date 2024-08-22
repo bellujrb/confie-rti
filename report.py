@@ -1,7 +1,7 @@
 import streamlit as st
 from fpdf import FPDF
 from io import BytesIO
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
 def generate_pdf(content):
@@ -27,36 +27,26 @@ def plot_conformity_chart(conformidades, nao_conformidades):
     labels = ['Conforme', 'Não Conforme']
     sizes = [len(conformidades), len(nao_conformidades)]
 
-    # Criar gráfico de barras
-    fig, ax = plt.subplots(figsize=(6, 4))
+    # Criar gráfico de barras usando Plotly
+    fig = go.Figure(data=[
+        go.Bar(name='Conformidades', x=labels, y=sizes, marker=dict(color=['#4CAF50', '#F44336']), text=sizes,
+               textposition='auto')
+    ])
 
-    # Definir cores e barras com gradiente suave
-    bar_colors = ['#4CAF50', '#F44336']
-    bars = ax.bar(labels, sizes, color=bar_colors, edgecolor='black', linewidth=1.2)
+    # Atualizar o layout do gráfico
+    fig.update_layout(
+        title='Gráfico de Conformidade',
+        xaxis_title='Status',
+        yaxis_title='Quantidade',
+        xaxis=dict(tickmode='array', tickvals=labels),
+        yaxis=dict(showgrid=True, gridcolor='lightgray'),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(size=12, color='black')
+    )
 
-    # Adicionar rótulos de valor nas barras
-    for bar in bars:
-        yval = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, yval + 0.2, int(yval), ha='center', va='bottom', fontsize=12,
-                fontweight='bold')
-
-    # Adicionar título e rótulos
-    ax.set_title('Gráfico de Conformidade', fontsize=16, fontweight='bold', pad=20)
-    ax.set_ylabel('Quantidade', fontsize=12)
-    ax.set_xlabel('Status', fontsize=12)
-
-    # Adicionar grade para melhorar a legibilidade
-    ax.grid(True, axis='y', linestyle='--', alpha=0.7)
-
-    # Ajustar limites do eixo Y para dar espaço ao rótulo superior
-    ax.set_ylim(0, max(sizes) + 1)
-
-    # Estilo mais atraente
-    plt.xticks(fontsize=12, fontweight='bold')
-    plt.yticks(fontsize=12)
-
-    # Mostrar gráfico
-    st.pyplot(fig)
+    # Mostrar gráfico no Streamlit
+    st.plotly_chart(fig)
 
     # Mostrar detalhes das conformidades e não conformidades
     st.write("### Detalhes:")
@@ -83,7 +73,7 @@ def run():
             "",
             "Acessibilidade reduzida ao conjunto de manobra e controle.",
             "NC: 2.1 - Descrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
-            "NC: 1.2 - Descrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
+            "NC: 1.2 - D    escrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
             "NC: 1.3 - Descrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
         ]
 

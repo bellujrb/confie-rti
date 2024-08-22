@@ -1,16 +1,15 @@
 import streamlit as st
-
 import ncs_inserted
 import ncs_totals
 import register_project
 import register_rti
 import register_sector
 import report
-
+import start
+import os
 
 def check_credentials(username, password):
     return username == "admin" and password == "admin"
-
 
 def main():
     if 'authenticated' not in st.session_state:
@@ -31,18 +30,15 @@ def main():
                     st.error("Credenciais incorretas, por favor tente novamente.")
         return
 
-    # Adicionando logo no cabeçalho da sidebar com HTML e CSS
-    st.sidebar.markdown(
-        """
-        <div style="text-align: center; margin-bottom: 2rem; margin-top: 1rem;">
-            <img src="logo.png" alt="Logo" style="height: 60px;">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # Caminho para a logo
+    logo_path = os.path.join('assets', 'logo.png')
+
+    if os.path.exists(logo_path):
+        st.sidebar.image(logo_path, width=250)
 
     st.sidebar.title('Navegação')
     PAGES_INDIVIDUAL = {
+        "Inicio": start,
         "Cadastro do Projeto": register_project,
         "Cadastro de Setor": register_sector,
         "Formatação RTI": register_rti,
@@ -54,7 +50,6 @@ def main():
     selection = st.sidebar.radio("Ir para", list(PAGES_INDIVIDUAL.keys()), key='page')
     page = PAGES_INDIVIDUAL[selection]
     page.run()
-
 
 if __name__ == "__main__":
     main()

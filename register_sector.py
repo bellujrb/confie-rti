@@ -7,7 +7,7 @@ def run():
     # Número CONF do projeto com o qual o usuário está interagindo
     numero_conf = "12345"  # Este valor pode ser dinamicamente ajustado conforme a necessidade
 
-    st.header(f"Número CONF: {numero_conf})")
+    st.header(f"Número CONF: {numero_conf}")
 
     with st.form(key='sector_form'):
         # Campo de texto para o nome do setor

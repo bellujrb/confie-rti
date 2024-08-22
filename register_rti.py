@@ -1,7 +1,13 @@
 import streamlit as st
 from PIL import Image
-import io
+import time
 
+# Função para formatar o tempo em horas, minutos e segundos
+def format_time(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    seconds = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 def run():
     st.title('Registro de Projeto')
@@ -9,11 +15,28 @@ def run():
     # Entrada para o número do projeto
     numero_projeto = st.text_input("Número do Projeto")
 
-    # Botão para começar a RIT
-    start_rit = st.button("Começar a RIT")
+    # Inicializando variáveis de sessão
+    if "start_time" not in st.session_state:
+        st.session_state.start_time = None
+    if "elapsed_time" not in st.session_state:
+        st.session_state.elapsed_time = 0
+    if "temporizador_iniciado" not in st.session_state:
+        st.session_state.temporizador_iniciado = False
 
-    if start_rit:
-        # Se o botão for pressionado, exibir os campos adicionais
+    # Se o temporizador já foi iniciado, calcular o tempo decorrido
+    if st.session_state.temporizador_iniciado:
+        st.session_state.elapsed_time = time.time() - st.session_state.start_time
+
+    # Botão para começar a RIT
+    if not st.session_state.temporizador_iniciado:
+        start_rit = st.button("Começar a RIT")
+        if start_rit:
+            # Inicia o temporizador e marca como iniciado
+            st.session_state.start_time = time.time()
+            st.session_state.temporizador_iniciado = True
+
+    # Exibir os campos adicionais após a RIT ser iniciada
+    if st.session_state.temporizador_iniciado:
         st.subheader("Configurações RTI")
 
         # Seletor de setor
@@ -52,22 +75,33 @@ def run():
             "Sinalização obsoleta ou danificada"
         ]
 
-        # Inicializando a tabela
-        for i, pergunta in enumerate(perguntas):
-            st.write(f"{i + 1}- {pergunta}")
-            cols = st.columns([1, 1, 1, 3])
-            with cols[0]:
-                resposta = st.radio("", resposta_opcoes, key=f"resposta_{i}")
-            with cols[1]:
-                st.write("")  # Espaço reservado para manter o layout da tabela consistente
-            with cols[2]:
-                st.write("")  # Espaço reservado para manter o layout da tabela consistente
-            with cols[3]:
-                titulo_nc = st.selectbox("Título da NC", options=titulo_nc_options, index=i % len(titulo_nc_options),
-                                         key=f"titulo_{i}")
-                descricao_nc = st.text_area("Descrição da NC", key=f"desc_{i}")
-                recomendacao = st.text_area("Recomendação", key=f"rec_{i}")
+        # Organizando as perguntas em expansores para melhorar a interface
+        with st.form("form_rti"):
+            for i, pergunta in enumerate(perguntas):
+                with st.expander(f"{i + 1}- {pergunta}"):
+                    cols = st.columns([1, 3])
+                    with cols[0]:
+                        resposta = st.radio("Resposta", resposta_opcoes, key=f"resposta_{i}")
+                    with cols[1]:
+                        titulo_nc = st.selectbox("Título da NC", options=titulo_nc_options, index=i % len(titulo_nc_options),
+                                                 key=f"titulo_{i}")
+                        descricao_nc = st.text_area("Descrição da NC", key=f"desc_{i}")
+                        recomendacao = st.text_area("Recomendação", key=f"rec_{i}")
+            # Botão para submeter o formulário
+            submit = st.form_submit_button("Salvar Respostas")
 
+        if submit:
+            st.success("Respostas salvas com sucesso!")
 
-if __name__ == "__main__":
-    run()
+        # Botão para criar a RTI
+        criar_rti = st.button("Criar RTI")
+
+        if criar_rti:
+            # Salvando o tempo decorrido
+            st.success(f"RTI criada! Tempo total: {format_time(st.session_state.elapsed_time)}")
+            # Resetando o tempo para o próximo registro
+            st.session_state.start_time = None
+            st.session_state.elapsed_time = 0
+            st.session_state.temporizador_iniciado = False
+
+run()
