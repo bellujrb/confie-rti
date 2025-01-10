@@ -1,99 +1,161 @@
+from reportlab.lib.units import cm
 import streamlit as st
-from fpdf import FPDF
+import json
 from io import BytesIO
-import plotly.graph_objects as go
+import requests
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Image as ReportLabImage, Spacer
+from reportlab.lib import colors
+
+from capa import generate_capa
+from indice import generate_indice
+from instalacao_eletrica import generate_documentacao
+from introducao import generate_introducao
+from metodologia import generate_metodologia
+from normas import generate_normas
+from objetivo import generate_objetivo
 
 
-def generate_pdf(content):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    # Adicionar conteúdo ao PDF
-    for line in content:
-        pdf.cell(200, 10, txt=line, ln=True, align='L')
-
-    # Salvar o PDF em um buffer de memória
-    pdf_buffer = BytesIO()
-    pdf_output = pdf.output(dest='S').encode('latin1')  # Retorna o conteúdo como bytes
-    pdf_buffer.write(pdf_output)
-    pdf_buffer.seek(0)  # Reposiciona o buffer no início
-
-    return pdf_buffer
+def load_mock_data():
+    try:
+        with open("data.json", "r", encoding="utf-8") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        st.error("Arquivo 'data.json' não encontrado.")
+        return None
+    except UnicodeDecodeError as e:
+        st.error(f"Erro de codificação ao ler o arquivo 'data.json': {e}")
+        return None
 
 
-def plot_conformity_chart(conformidades, nao_conformidades):
-    # Preparar dados para o gráfico
-    labels = ['Conforme', 'Não Conforme']
-    sizes = [len(conformidades), len(nao_conformidades)]
+def download_image(image_url):
+    try:
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            img_data = BytesIO(response.content)
+            return ReportLabImage(img_data)
+        else:
+            return None
+    except Exception as e:
+        st.error(f"Erro ao baixar a imagem: {e}")
+        return None
 
-    # Criar gráfico de barras usando Plotly
-    fig = go.Figure(data=[
-        go.Bar(name='Conformidades', x=labels, y=sizes, marker=dict(color=['#4CAF50', '#F44336']), text=sizes,
-               textposition='auto')
-    ])
 
-    # Atualizar o layout do gráfico
-    fig.update_layout(
-        title='Gráfico de Conformidade',
-        xaxis_title='Status',
-        yaxis_title='Quantidade',
-        xaxis=dict(tickmode='array', tickvals=labels),
-        yaxis=dict(showgrid=True, gridcolor='lightgray'),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(size=12, color='black')
+def add_header_and_footer(canvas, doc):
+    canvas.setFont("Helvetica-Bold", 10)
+    canvas.setFillColor(colors.green)
+    canvas.drawString(20, 800, "CONF0323498 – PROJETO TESLA")
+    canvas.drawRightString(550, 800, f"{doc.page}")
+    footer_text = (
+        "Conformetec Assessoria Técnica para a Conformidade Elétrica\n"
+        "Rua Coronel Francisco Schmidt 1400, Sala 33 – Sertãozinho/SP  CEP: 14160-710\n"
+        "Telefone (16) 3524-8327"
     )
+    text_object = canvas.beginText(105, 15)
+    for line in footer_text.split("\n"):
+        text_width = canvas.stringWidth(line, "Helvetica", 9)
+        text_object.setTextOrigin((A4[0] - text_width) / 2, text_object.getY())
+        text_object.textLine(line)
+    canvas.drawText(text_object)
 
-    # Mostrar gráfico no Streamlit
-    st.plotly_chart(fig)
+def generate_pdf(project_data):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
 
-    # Mostrar detalhes das conformidades e não conformidades
-    st.write("### Detalhes:")
-    st.write("**Conforme:**")
-    for item in conformidades:
-        st.write(f"- {item}")
-    st.write("**Não Conforme:**")
-    for item in nao_conformidades:
-        st.write(f"- {item}")
+    # Estilos personalizados
+    styles.add(ParagraphStyle(name='BlueTitle', fontSize=14, textColor=colors.blue, spaceAfter=12))
+    styles.add(ParagraphStyle(name='NCHeading', fontSize=12, textColor=colors.black, spaceAfter=10, alignment=1))  # Centro
+
+    elements = []
+
+    generate_capa(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    generate_indice(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    generate_objetivo(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    generate_introducao(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    generate_metodologia(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    generate_normas(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    generate_documentacao(elements, styles)
+    elements.append(PageBreak())  # Adicionar quebra de página
+
+    # Adicionando conteúdos de equipamentos e imagens
+    for sector in project_data.get("sectors", []):
+        for equipment in sector.get("equipments", []):
+            # Título do equipamento
+            equipment_title = f"Equipamento: {equipment['equipment_tag']}"
+            equipment_location = f"Local: {equipment.get('location', 'N/A')}"
+            elements.append(Paragraph(equipment_title, styles['BlueTitle']))
+            elements.append(Paragraph(equipment_location, styles['BlueTitle']))
+
+            # Imagem do equipamento
+            if "image" in equipment and equipment["image"]:
+                image_url = equipment["image"][0]
+                img = download_image(image_url)
+                if img:
+                    img.width = 14 * cm
+                    img.height = 7 * cm
+                    elements.append(img)
+                else:
+                    elements.append(Paragraph("Imagem não disponível"))
+
+            for nc in equipment.get("ncs", []):
+                # Adicionar título NC
+                elements.append(PageBreak())
+                elements.append(Paragraph(f"NC: {nc['nc_title']}", styles['NCHeading']))
+
+                # Detalhes da NC
+                elements.append(Paragraph(f"Descrição: {nc['nc_description']}"))
+                elements.append(Paragraph(f"Base Técnica: {nc['technical_base']}"))
+                elements.append(Paragraph(f"Base Legal: {nc['legal_base']}"))
+                elements.append(Paragraph(f"Recomendação: {nc['recommendation']}"))
+
+
+    try:
+        doc.build(elements, onFirstPage=add_header_and_footer, onLaterPages=add_header_and_footer)
+    except Exception as e:
+        st.error(f"Erro ao gerar o PDF: {e}")
+        return None
+
+    buffer.seek(0)
+    return buffer
 
 
 def run():
-    st.title('Relatório')
+    st.title("Gerar Relatório PDF dos Equipamentos")
 
-    st.write("Clique no botão abaixo para gerar o relatório.")
+    if st.button("Gerar PDF"):
+        with st.spinner("Gerando o PDF, aguarde..."):
+            project_data = load_mock_data()
 
-    if st.button("Gerar Relatório"):
-        content = [
-            "Relatório de Não Conformidades",
-            "",
-            "Equipamento (TAG): QD Geral",
-            "Descrição: -",
-            "Conformetec (TAG): CONF-RTI-001",
-            "",
-            "Acessibilidade reduzida ao conjunto de manobra e controle.",
-            "NC: 2.1 - Descrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
-            "NC: 1.2 - D    escrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
-            "NC: 1.3 - Descrição: #NAME? - Infração: #NAME? - Nº Conformetec: #N/A - Local: #N/A - TAG: #VALUE! - Descrição: #N/A - Nº IMG: #N/A",
-        ]
+            if project_data:
+                pdf_buffer = generate_pdf(project_data)
 
-        # Dados de conformidade (substitua pelos seus próprios dados)
-        conformidades = ["Conformidade A", "Conformidade B"]
-        nao_conformidades = ["Não Conformidade 1", "Não Conformidade 2", "Não Conformidade 3"]
+                if pdf_buffer:
+                    st.download_button(
+                        label="Baixar PDF",
+                        data=pdf_buffer,
+                        file_name="relatorio.pdf",
+                        mime="application/pdf"
+                    )
+                    st.success("PDF gerado com sucesso!")
 
-        # Gerar o PDF
-        pdf_buffer = generate_pdf(content)
-
-        # Oferecer download do PDF
-        st.download_button(
-            label="Download do Relatório",
-            data=pdf_buffer,
-            file_name="relatorio.pdf",
-            mime="application/pdf"
-        )
-
-        # Mostrar o gráfico de conformidade
-        plot_conformity_chart(conformidades, nao_conformidades)
+                else:
+                    st.error("Falha ao gerar o PDF.")
+            else:
+                st.error("Erro ao carregar os dados do arquivo.")
 
 
 if __name__ == "__main__":

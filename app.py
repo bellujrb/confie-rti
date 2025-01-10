@@ -1,4 +1,7 @@
 import streamlit as st
+import os
+import time
+
 import ncs_inserted
 import ncs_totals
 import register_project
@@ -6,50 +9,75 @@ import register_rti
 import register_sector
 import report
 import start
-import os
 
-def check_credentials(username, password):
-    return username == "admin" and password == "admin"
+def login():
+    st.title("Login")
+    
+    username = st.text_input("Usuário")
+    password = st.text_input("Senha", type="password")
+    
+    if st.button("Login"):
+        if username == "admin" and password == "admin":
+            st.session_state['logged_in'] = True
+            st.success("Login realizado com sucesso!")
+            time.sleep(1)
+            st.rerun()  
+        else:
+            st.error("Usuário ou senha incorretos.")
 
 def main():
-    if 'authenticated' not in st.session_state:
-        st.session_state['authenticated'] = False
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
 
-    # Tela de login
-    if not st.session_state['authenticated']:
-        st.title("Login")
-        with st.form(key='login_form'):
-            username = st.text_input("Nome de Usuário")
-            password = st.text_input("Senha", type="password")
-            login_button = st.form_submit_button("Login")
-            if login_button:
-                if check_credentials(username, password):
-                    st.session_state['authenticated'] = True
-                    st.rerun()
-                else:
-                    st.error("Credenciais incorretas, por favor tente novamente.")
+    if not st.session_state['logged_in']:
+        login()
         return
 
-    # Caminho para a logo
-    logo_path = os.path.join('assets', 'logo.png')
+    st.title('Conformetec RTI')
 
-    if os.path.exists(logo_path):
-        st.sidebar.image(logo_path, width=250)
+    if 'step' not in st.session_state:
+        st.session_state['step'] = 0  
 
-    st.sidebar.title('Navegação')
-    PAGES_INDIVIDUAL = {
-        "Inicio": start,
-        "Cadastro do Projeto": register_project,
-        "Cadastro de Setor": register_sector,
-        "Formatação RTI": register_rti,
-        "NCS Inseridas": ncs_inserted,
-        "NCS Cadastradas": ncs_totals,
-        "Relatório": report
-    }
+    PAGES_TUTORIAL = [
+        {"label": "Início", "page": start},
+        {"label": "Cadastro do Projeto", "page": register_project},
+        {"label": "Gerenciar Setores", "page": register_sector},
+        {"label": "Formatação RTI", "page": register_rti},
+        {"label": "NCS Inseridas", "page": ncs_inserted},
+        {"label": "Banco de Dados NC", "page": ncs_totals},
+        {"label": "Relatório", "page": report}
+    ]
 
-    selection = st.sidebar.radio("Ir para", list(PAGES_INDIVIDUAL.keys()), key='page')
-    page = PAGES_INDIVIDUAL[selection]
-    page.run()
+    current_step = st.session_state['step']
+
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    with col1:
+        if current_step > 0:
+            if st.button("← Voltar", key="voltar"):
+                st.session_state['step'] -= 1
+                st.rerun()
+
+    with col2:
+        if current_step < len(PAGES_TUTORIAL) - 1:
+            if st.button("Próximo →", key="proximo"):
+                st.session_state['step'] += 1
+                st.rerun()
+
+    with col3:
+        if st.button("Banco de Dados NC", key="banco_dados_nc"):
+            st.session_state['step'] = 5  
+            st.rerun()
+
+    st.progress((current_step + 1) / len(PAGES_TUTORIAL))
+
+    page_info = PAGES_TUTORIAL[current_step]
+    page_info['page'].run()
+
+    st.markdown("---")  
+
+    if current_step == len(PAGES_TUTORIAL) - 1:
+        st.success("Você concluiu todos os passos ;)")
 
 if __name__ == "__main__":
     main()

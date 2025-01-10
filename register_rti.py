@@ -1,107 +1,146 @@
 import streamlit as st
-from PIL import Image
-import time
+import requests
 
-# Função para formatar o tempo em horas, minutos e segundos
-def format_time(seconds):
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    seconds = int(seconds % 60)
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+def initialize_session_state():
+    if 'inputs' not in st.session_state:
+        st.session_state.inputs = {
+            "numero_projeto": "",
+            "setor": "Setor A",  
+            "tag_conformetec": "",
+            "local": "",
+            "tag_equip": "",
+            "desc_equip": ""
+        }
+
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 0
+
+    if 'selected_images' not in st.session_state:
+        st.session_state.selected_images = []
+
+    if 'question_index' not in st.session_state:
+        st.session_state.question_index = 0
+
+    if 'responses' not in st.session_state:
+        st.session_state.responses = []
+
+    if 'resposta_atual' not in st.session_state:
+        st.session_state.resposta_atual = ""
+
+    if 'titulo_nc_atual' not in st.session_state:
+        st.session_state.titulo_nc_atual = ""
+
+    if 'descricao_nc_atual' not in st.session_state:
+        st.session_state.descricao_nc_atual = ""
+
+    if 'recomendacao_atual' not in st.session_state:
+        st.session_state.recomendacao_atual = ""
+
+    if 'api_images' not in st.session_state:
+        st.session_state.api_images = []  
+
+def fetch_sectors():
+    url = "http://18.219.73.187:8080/api/sectors"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()  
+    else:
+        st.error("Falha ao buscar os setores da API.")
+        return []
+
+def fetch_questions():
+    url = "http://18.219.73.187:8080/api/questions"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error("Falha ao buscar perguntas da API")
+        return []
+
+def input_form():
+    st.subheader("Informações do Projeto")
+
+    st.session_state.inputs["numero_projeto"] = st.text_input("Número do Projeto", st.session_state.inputs["numero_projeto"])
+
+    sectors_data = fetch_sectors()
+    
+    if sectors_data:
+        sector_names = [sector['name'] for sector in sectors_data] 
+        selected_sector = st.selectbox("Escolha o Setor", sector_names) 
+
+        sector_selected_data = next(sector for sector in sectors_data if sector['name'] == selected_sector)
+        image_urls = eval(sector_selected_data['images'])  
+
+        st.session_state.api_images = image_urls
+
+        st.write(f"Setor selecionado: {selected_sector}")
+    else:
+        st.error("Nenhum setor disponível.")
+
+    st.session_state.inputs["tag_conformetec"] = st.text_input("Tag Conformetec", st.session_state.inputs["tag_conformetec"])
+    st.session_state.inputs["local"] = st.text_input("Local", st.session_state.inputs["local"])
+    st.session_state.inputs["tag_equip"] = st.text_input("Tag Equip", st.session_state.inputs["tag_equip"])
+    st.session_state.inputs["desc_equip"] = st.text_input("Desc Equip", st.session_state.inputs["desc_equip"])
 
 def run():
+    initialize_session_state()
+
     st.title('Registro de Projeto')
 
-    # Entrada para o número do projeto
-    numero_projeto = st.text_input("Número do Projeto")
+    questions_data = fetch_questions()
 
-    # Inicializando variáveis de sessão
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = None
-    if "elapsed_time" not in st.session_state:
-        st.session_state.elapsed_time = 0
-    if "temporizador_iniciado" not in st.session_state:
-        st.session_state.temporizador_iniciado = False
+    if not questions_data:
+        st.error("Nenhuma pergunta disponível.")
+        return
 
-    # Se o temporizador já foi iniciado, calcular o tempo decorrido
-    if st.session_state.temporizador_iniciado:
-        st.session_state.elapsed_time = time.time() - st.session_state.start_time
+    input_form()
 
-    # Botão para começar a RIT
-    if not st.session_state.temporizador_iniciado:
-        start_rit = st.button("Começar a RIT")
-        if start_rit:
-            # Inicia o temporizador e marca como iniciado
-            st.session_state.start_time = time.time()
-            st.session_state.temporizador_iniciado = True
+    perguntas = [q["question"] for q in questions_data]
+    resposta_opcoes = ["Sim", "Não", "N/A"]
 
-    # Exibir os campos adicionais após a RIT ser iniciada
-    if st.session_state.temporizador_iniciado:
-        st.subheader("Configurações RTI")
+    current_question = questions_data[st.session_state.question_index]
+    nc_options = [nc["nc_title"] for nc in current_question["ncs"]]
 
-        # Seletor de setor
-        setor = st.selectbox("Escolha o Setor", ["Setor A", "Setor B", "Setor C"])
+    pergunta_atual = perguntas[st.session_state.question_index]
+    st.markdown(f"<h2>{pergunta_atual}</h2>", unsafe_allow_html=True)
 
-        # Uploader de imagem com base no setor escolhido
-        imagens_do_setor = st.file_uploader("Imagens do Setor", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
+    st.session_state.resposta_atual = st.radio("Resposta", resposta_opcoes, key=f"resposta_{st.session_state.question_index}")
 
-        # Visualizar imagens carregadas
-        if imagens_do_setor:
-            for imagem in imagens_do_setor:
-                # Nome da imagem
-                st.write(f"Nome da imagem: {imagem.name}")
-                # Botão para visualizar a imagem
-                if st.button(f"Visualizar {imagem.name}"):
-                    img = Image.open(imagem)
-                    st.image(img, caption=imagem.name, use_column_width=True)
+    if st.session_state.resposta_atual == "Não":
+        selected_nc = st.selectbox("Título da NC", options=nc_options, key=f"titulo_{st.session_state.question_index}")
 
-        tag_conformetec = st.text_input("Tag Conformetec")
-        local = st.text_input("Local")
-        tag_equip = st.text_input("Tag Equip")
-        desc_equip = st.text_input("Desc Equip")
+        nc_selecionada = next(nc for nc in current_question["ncs"] if nc["nc_title"] == selected_nc)
 
-        st.subheader("Questões RTI Tabela")
+        st.text_area("Descrição da NC", value=nc_selecionada["nc_description"], height=150, disabled=True)
+        st.text_area("Recomendação", value=nc_selecionada["recommendation"], height=150, disabled=True)
 
-        # Lista de perguntas
-        perguntas = [
-            "O painel está acessível para inspeção, manutenção e operação?",
-            "Os dispositivos de proteção estão funcionais?",
-            "A sinalização é adequada e legível?"
-        ]
-        resposta_opcoes = ["Sim", "Não", "N/A"]
-        titulo_nc_options = [
-            "Conjunto de manobra e controle com acessibilidade reduzida pela maneira de instalação",
-            "Proteção inadequada contra contatos indiretos",
-            "Sinalização obsoleta ou danificada"
-        ]
+        st.write("Escolha imagens associadas à resposta:")
+        selected_images = []
+        cols = st.columns(3)  
 
-        # Organizando as perguntas em expansores para melhorar a interface
-        with st.form("form_rti"):
-            for i, pergunta in enumerate(perguntas):
-                with st.expander(f"{i + 1}- {pergunta}"):
-                    cols = st.columns([1, 3])
-                    with cols[0]:
-                        resposta = st.radio("Resposta", resposta_opcoes, key=f"resposta_{i}")
-                    with cols[1]:
-                        titulo_nc = st.selectbox("Título da NC", options=titulo_nc_options, index=i % len(titulo_nc_options),
-                                                 key=f"titulo_{i}")
-                        descricao_nc = st.text_area("Descrição da NC", key=f"desc_{i}")
-                        recomendacao = st.text_area("Recomendação", key=f"rec_{i}")
-            # Botão para submeter o formulário
-            submit = st.form_submit_button("Salvar Respostas")
+        for i, url in enumerate(st.session_state.api_images):
+            with cols[i % 3]:
+                st.image(url, use_column_width=True)
+                if st.checkbox(f"Selecionar Imagem {i+1}", key=f"select_img_{i}"):
+                    selected_images.append(url)
 
-        if submit:
-            st.success("Respostas salvas com sucesso!")
+        st.write("Imagens selecionadas:")
+        if selected_images:
+            for img_url in selected_images:
+                st.write(img_url)
+        else:
+            st.write("Nenhuma imagem selecionada.")
+    else:
+        st.info("Detalhes de não conformidade não necessários para esta resposta.")
+        st.session_state.selected_images.clear()
 
-        # Botão para criar a RTI
-        criar_rti = st.button("Criar RTI")
+    st.write("---")
 
-        if criar_rti:
-            # Salvando o tempo decorrido
-            st.success(f"RTI criada! Tempo total: {format_time(st.session_state.elapsed_time)}")
-            # Resetando o tempo para o próximo registro
-            st.session_state.start_time = None
-            st.session_state.elapsed_time = 0
-            st.session_state.temporizador_iniciado = False
+    if st.button("Próxima Pergunta"):
+        if st.session_state.question_index < len(perguntas) - 1:
+            st.session_state.question_index += 1
+        else:
+            st.success("Você respondeu a todas as perguntas!")
 
-run()
+if __name__ == "__main__":
+    run()

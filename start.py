@@ -1,37 +1,25 @@
 import streamlit as st
 
-
 def run():
-    st.title("Relatório Técnico de Inspeção das Instalações Elétricas (RTI)")
-
-    st.header("Bem-vindo ao Sistema de RTI")
-
+    st.title("Bem-vindo ao Sistema de Criação de RTI da Conformetec")
+    
+    st.subheader("O que é o RTI?")
     st.write("""
-    O Relatório Técnico de Inspeção das Instalações Elétricas (RTI) é uma ferramenta desenvolvida para facilitar a inspeção e o registro das condições das instalações elétricas de uma propriedade.
-
-    A RTI é de grande importância para garantir a segurança e a conformidade com as normas técnicas, além de auxiliar na manutenção preventiva e corretiva das instalações elétricas.
+    O RTI (Relatório Técnico de Inspeção) é um documento essencial para o acompanhamento e verificação de projetos de engenharia. 
+    Ele serve para registrar não conformidades, ações corretivas, e garantir que todos os processos atendam aos requisitos e normas estabelecidas.
+    """)
+    
+    st.subheader("Como usar o sistema?")
+    st.write("""
+    Este sistema foi projetado para ser uma ferramenta intuitiva e eficiente para engenheiros da Conformetec. 
+    Siga as etapas abaixo para utilizar o sistema:
+    
+    1. **Cadastro do Projeto**: Registre as informações iniciais do projeto, incluindo número do projeto, nome, CNPJ, endereço e outras informações necessárias.
+    2. **Cadastro de Setor**: Adicione setores relacionados ao projeto, especificando as áreas de atuação e responsáveis.
+    3. **Formatação RTI**: Formate e organize o relatório técnico de inspeção de acordo com os padrões da Conformetec.
+    4. **Inserção de NCS**: Registre as Não Conformidades (NCS) encontradas durante as inspeções.
+    5. **Visualização de NCS Cadastradas**: Consulte todas as NCS registradas e verifique o status de cada uma.
+    6. **Relatório Final**: Gere o relatório final do RTI para revisão e aprovação.
     """)
 
-    st.subheader("Funcionalidades do Sistema RTI:")
-
-    st.write("""
-    - **Visualização de RTI**: O cliente poderá visualizar os resultados das RTIs realizadas e acessar as informações detalhadas sobre o estado de cada componente inspecionado.
-    - **Criação de RTI**: O engenheiro responsável terá a capacidade de gerar e preencher um relatório RTI com base nas inspeções realizadas nas instalações elétricas.
-    """)
-
-    st.subheader("Como Funciona a Criação de uma RTI?")
-
-    st.write("""
-    1. O engenheiro irá iniciar a criação de uma RTI, inserindo o número do projeto e escolhendo o setor a ser inspecionado.
-    2. Durante a inspeção, serão coletadas imagens e informações detalhadas sobre as condições das instalações.
-    3. O sistema permite ao engenheiro registrar as não conformidades (NC), suas descrições e recomendações para correção.
-    4. Após concluir a inspeção, o relatório RTI é gerado e pode ser visualizado pelo cliente.
-    """)
-
-    st.subheader("Status Atual: Em Fase de Testes")
-
-    st.write("""
-    O sistema RTI ainda está em fase de testes e melhorias contínuas. Estamos trabalhando para garantir que todas as funcionalidades estejam completas e funcionando corretamente. Agradecemos a sua paciência enquanto refinamos o sistema.
-    """)
-
-    st.info("Caso tenha dúvidas ou sugestões, por favor entre em contato com o suporte técnico.")
+    st.info("Este sistema é de uso exclusivo da Conformetec e foi desenvolvido para otimizar o processo de criação e gestão de RTIs.")
